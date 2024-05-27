@@ -1,6 +1,10 @@
+# env
+targetClickDelay = 20 # how many frames to wait before registering a new button press
+
 # Imports
 import random
-from microbit import *
+import time
+import microbit
 
 # todo, snake_case not camelCase
 
@@ -95,7 +99,7 @@ class Field:
         self.field['layer' + str(layer)].remove(ship)
 
     # move object between layers
-    def moveObject(self, object, fromLayer, toLayer):
+    def changeObjectLayer(self, object, fromLayer, toLayer):
         assert fromLayer == 0 or fromLayer == 3 or fromLayer == 6 or fromLayer == 9, 'value fromLayer must be 0, 3, 6 or 9'
         assert toLayer == 0 or toLayer == 3 or toLayer == 6 or toLayer == 9, 'value toLayer must be 0, 3, 6 or 9'
 
@@ -116,7 +120,7 @@ class Ship:
         self.size = size
         self.rot = rot # rotation (hori/vert)
 
-# Player class, manages Player position, etc. Note: Needs to be added to the Field class manually
+# Player class, manages Player position, etc. Needs to be added to the Field class manually
 class Player:
     # init
     def __init__(self):
@@ -135,6 +139,16 @@ class Player:
             self.xPos -= 1
         elif direction == 'right':
             self.xPos += 1
+
+        # ensure player is within bounds
+        if self.xPos < 1:
+            self.xPos = 1
+        elif self.xPos > 5:
+            self.xPos = 5
+        if self.yPos < 1:
+            self.yPos = 1
+        elif self.yPos > 5:
+            self.yPos = 5
 
     # Set the player's position
     def setPosition(self, x, y):
@@ -194,27 +208,27 @@ class Render:
     # renders the pixelMatrix returned by __generatePixelMatrix
     def renderMatrix(self, layers):
         matrix = self.__generatePixelMatrix(layers)
-        microbit.display.clear()
-        for row in matrix:
-            for pixel in row:
-                microbit.display.set_pixel(row.index(pixel), matrix.index(row), pixel)
+        print(matrix)
+        for y, row in enumerate(matrix):
+            for x, pixel in enumerate(row):
+                microbit.display.set_pixel(x, y, pixel)
     
     # Render any other object
-    def renderOther(type, input=None):
+    def renderOther(self, type, input=None):
         if type == 'x-cross':
-            microbit.display.show(Image.NO)
+            microbit.display.show(microbit.Image.NO, delay=1000, clear=True, wait=True)
         elif type == 'skull':
-            microbit.display.show(Image.SKULL)
+            microbit.display.show(microbit.Image.SKULL, delay=1000, clear=True, wait=True)
+        elif type == 'win':
+            microbit.display.show(microbit.Image.HAPPY, delay=1000, clear=True, wait=True)
         elif type == 'text':
             assert input != None, 'input must be a string or integer'
-            pass
-        elif type == 'win':
-            pass
+            microbit.display.scroll(str(input), delay=100, wait=True)
         else:
             raise AssertionError('Invalid object to render')
 
 # Functions
-# Converts a Ship object to an absolute list of tiles (absolute being relative to the field's 1,1 coords)
+# Converts a Ship object to an absolute list of tiles (absolute being relative to the field's 0,0 coords)
 def convertShiptoTiles(ship):
     tiles = []
 
@@ -232,30 +246,138 @@ def getRandomXYValue():
 
 # Returns a random x and y value between 1 and 5, but has a maxFieldSize and a length (length of the ship). This ensures the ship is within bounds of the player field.
 def getRandomXYValueConstrainted(max, length, rot):
-    possiblePos = max - length + 1
+    possiblePos = max - length + 1 # max field lenght minus the ship length = tiles available for the ship, +1 to fix offset
     if rot == 'vert':
         return { 'x': random.randint(1, max), 'y': random.randint(1, possiblePos)}
     else:
         return { 'x': random.randint(1, possiblePos), 'y': random.randint(1, max)}
 
-# Init
-field = Field()
-field.addRandomShip('minesweeper')      # 1 long
-field.addRandomShip('submarine')        # 2 long
-field.addRandomShip('submarine')        # 2 long
-field.addRandomShip('cruiser')          # 3 long
-field.addRandomShip('aircraft_carrier') # 4 long
+# Similar to checkShipConstraint, but returns the ship object that is at the position x, y, otherwhise None, instead of True/False
+def getShipFromCoords(field, x, y):
+    ships = field.field['layer6']
+    for ship in ships:
+        tiles = convertShiptoTiles(ship)
+        for tile in tiles:
+            if tile['x'] == x and tile['y'] == y:
+                return ship
+    return None
 
-player = Player()
-field.addPlayer(player)
+# Fires a shot at a position, returns True/False if a ship was hit
+def fire(field, x, y):
+    target = getShipFromCoords(field, x, y)
+    if target != None:
+        if target in field.field['layer6']:
+            return True
+    return False
 
-renderer = Render(field)
-renderer.renderMatrix([3, 6, 9])
-
-# Indefinite loop
+# Infinite loop
 while True:
-    # whether a new Frame, or a render call is needed.
-    dispatchRender = False
+    # Init
+    # Create new field with ships
+    field = Field()
+    try:
+        field.addRandomShip('minesweeper')      # 1 long
+        field.addRandomShip('submarine')        # 2 long
+        field.addRandomShip('submarine')        # 2 long
+        field.addRandomShip('cruiser')          # 3 long
+        field.addRandomShip('aircraft_carrier') # 4 long
+    except:
+        continue # catch error 'Safety limit reached, could not place ship, skip this iteration
 
-    # get user movement input
-    gesture = microbit
+    # Add player
+    player = Player()
+    field.addPlayer(player)
+
+    # Instantiate renderer
+    renderer = Render(field)
+
+    # Variables
+    attempts = 0
+    clickDelay = 0
+    callRenderDispatchInNextFrame = True # first frame render must always render
+
+    # Game Loop
+    while True:
+        # whether a new Frame, or a render call is needed.
+        dispatchRender = False # Render a new Frame?
+        dispatchShipRender = False # Render the ships in that frame?
+
+        if callRenderDispatchInNextFrame == True: 
+            dispatchRender = True
+            callRenderDispatchInNextFrame = False
+
+        # decrease clickDelay (for button debounce)
+        if clickDelay > 0:
+            clickDelay -= 1
+
+        # get user movement input
+        gesture = microbit.accelerometer.current_gesture()
+        if gesture == 'up':
+            if not clickDelay > 0:
+                player.move('up')
+                dispatchRender = True
+                clickDelay = targetClickDelay
+        elif gesture == 'down':
+            if not clickDelay > 0:
+                player.move('down')
+                dispatchRender = True
+                clickDelay = targetClickDelay
+        elif gesture == 'left':
+            if not clickDelay > 0:
+                player.move('left')
+                dispatchRender = True
+                clickDelay = targetClickDelay
+        elif gesture == 'right':
+            if not clickDelay > 0:
+                player.move('right')
+                dispatchRender = True
+                clickDelay = targetClickDelay
+        elif gesture == 'shake':
+            break # exit current game
+
+        # get button input
+        buttonAPresses = microbit.button_a.get_presses() # resets to 0 everytime this is called. this is more reliable than is_pressed(), although doesnt work when holding down the button
+        buttonBPresses = microbit.button_b.get_presses()
+        buttonAPressed = microbit.button_b.is_pressed() # fallback to get_presses when holding down the button
+        if buttonAPresses > 0:
+            # log attempts
+            attempts += 1
+
+            # fire at position
+            hit = fire(field, player.xPos, player.yPos) # boolean
+            if hit == True:
+                field.changeObjectLayer(getShipFromCoords(field, player.xPos, player.yPos), 6, 3)
+                renderer.renderOther('skull')
+                time.sleep(0.1)
+                renderer.renderOther('text', 'HIT')
+                time.sleep(0.1)
+                callRenderDispatchInNextFrame = True
+
+                # check if all ships are dead, and win
+                if len(field.field['layer6']) < 1:
+                    renderer.renderOther('win')
+                    time.sleep(0.1)
+                    renderer.renderOther('text', 'WIN!')
+                    time.sleep(0.1)
+                    renderer.renderOther('text', 'Attempts: ' + str(attempts))
+                    callRenderDispatchInNextFrame = True
+                    break # exit and restart
+            else:
+                renderer.renderOther('x-cross')
+                time.sleep(0.1)
+                renderer.renderOther('text', 'MISS')
+                time.sleep(0.1)
+                callRenderDispatchInNextFrame = True
+        if buttonBPresses > 0 or buttonAPressed == True:
+            dispatchRender = True
+            dispatchShipRender = True
+            callRenderDispatchInNextFrame = True
+
+        # render the frame, Matrix only. Special cases have their own render call, namely the Button A press 'listener'.
+        if dispatchRender:
+            renderer.renderMatrix([3, 9])
+        if dispatchRender and dispatchShipRender:
+            renderer.renderMatrix([3, 6, 9])
+
+        # sleep for 50ms (20fps)
+        time.sleep(0.05)
