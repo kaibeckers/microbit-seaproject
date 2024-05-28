@@ -106,7 +106,7 @@ class Field:
         self.field['layer' + str(toLayer)].append(object)
         self.field['layer' + str(fromLayer)].remove(object)
 
-# Ship class, contains the position, size and rotation of a ship. Manages ship death and hit detection. Child of the Field class
+# Ship class, contains the position, size and rotation of a ship. Child of the Field class
 class Ship:
     # init
     def __init__(self, xPos, yPos, size, rot):
@@ -120,7 +120,7 @@ class Ship:
         self.size = size
         self.rot = rot # rotation (hori/vert)
 
-# Player class, manages Player position, etc. Needs to be added to the Field class manually
+# Player class, manages Player position, etc. Needs to be added to the Field class manually, functions as a child of the Field class
 class Player:
     # init
     def __init__(self):
@@ -216,11 +216,11 @@ class Render:
     # Render any other object
     def renderOther(self, type, input=None):
         if type == 'x-cross':
-            microbit.display.show(microbit.Image.NO, delay=1000, clear=True, wait=True)
+            microbit.display.show(microbit.Image.NO, delay=500, clear=True, wait=True)
         elif type == 'skull':
-            microbit.display.show(microbit.Image.SKULL, delay=1000, clear=True, wait=True)
+            microbit.display.show(microbit.Image.SKULL, delay=500, clear=True, wait=True)
         elif type == 'win':
-            microbit.display.show(microbit.Image.HAPPY, delay=1000, clear=True, wait=True)
+            microbit.display.show(microbit.Image.HAPPY, delay=500, clear=True, wait=True)
         elif type == 'text':
             assert input != None, 'input must be a string or integer'
             microbit.display.scroll(str(input), delay=100, wait=True)
@@ -282,7 +282,7 @@ while True:
         field.addRandomShip('cruiser')          # 3 long
         field.addRandomShip('aircraft_carrier') # 4 long
     except:
-        continue # catch error 'Safety limit reached, could not place ship, skip this iteration
+        continue # catch error 'Safety limit reached, could not place ship, skip this iteration and retry
 
     # Add player
     player = Player()
@@ -302,11 +302,12 @@ while True:
         dispatchRender = False # Render a new Frame?
         dispatchShipRender = False # Render the ships in that frame?
 
+        # sometimes the next frame needs to be rendered too. the previous iteration will set this to True if needed.
         if callRenderDispatchInNextFrame == True: 
             dispatchRender = True
             callRenderDispatchInNextFrame = False
 
-        # decrease clickDelay (for button debounce)
+        # decrease clickDelay (button debounce)
         if clickDelay > 0:
             clickDelay -= 1
 
@@ -373,7 +374,7 @@ while True:
             dispatchShipRender = True
             callRenderDispatchInNextFrame = True
 
-        # render the frame, Matrix only. Special cases have their own render call, namely the Button A press 'listener'.
+        # render the frame, Matrix only. Some events have their own render call, namely the Button A press 'listener'.
         if dispatchRender:
             renderer.renderMatrix([3, 9])
         if dispatchRender and dispatchShipRender:
