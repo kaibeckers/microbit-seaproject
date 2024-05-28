@@ -1,12 +1,25 @@
+# Title:       Battleship
+# Author:      Kai Beckers
+# Date:        28-05-2024
+#
+# A simple battleship game for the micro:bit. To fire, press the A button on your cursor.. To see where the ships are, 
+# press the B button. To move, tilt the micro:bit in the direction you want to move. To restart the game, shake the micro:bit.
+# Your objective is to sink all the ships on the field. Sunken ships will appear faintly on the field.
+# The game will display a skull when you hit a ship, and an X when you miss. When you win, a smiley face will appear!
+# Good luck!
+
+
 # env
 targetClickDelay = 20 # how many frames to wait before registering a new button press
+fieldSizeX = 5 
+fieldSizeY = 5
 
 # Imports
 import random
 import time
 import microbit
 
-# todo, snake_case not camelCase
+# was gonna do snake_case as per pep8, but as per the coteach guidelines, I'm doing camelCase
 
 # Classes
 # Field class, contains all ships, users and their positions
@@ -67,7 +80,7 @@ class Field:
 
         # ensure the entire ship is within bounds
         for tile in tilesToCheck:
-            if tile['x'] < 1 or tile['x'] > 5 or tile['y'] < 1 or tile['y'] > 5:
+            if tile['x'] < 1 or tile['x'] > fieldSizeX or tile['y'] < 1 or tile['y'] > fieldSizeY:
                 return True
 
         # convert Ships in layer 6 to tiles
@@ -111,8 +124,8 @@ class Ship:
     # init
     def __init__(self, xPos, yPos, size, rot):
         assert rot == 'hori' or rot == 'vert', 'value rot must be "hori" or "vert"'
-        assert xPos < 6 and xPos > 0, 'xPos is out of bounds'
-        assert yPos < 6 and yPos > 0, 'yPos is out of bounds'
+        assert xPos < (fieldSizeX + 1) and xPos > 0, 'xPos is out of bounds'
+        assert yPos < (fieldSizeY + 1) and yPos > 0, 'yPos is out of bounds'
 
         # set values
         self.xPos = xPos
@@ -143,17 +156,17 @@ class Player:
         # ensure player is within bounds
         if self.xPos < 1:
             self.xPos = 1
-        elif self.xPos > 5:
-            self.xPos = 5
+        elif self.xPos > fieldSizeX:
+            self.xPos = fieldSizeX
         if self.yPos < 1:
             self.yPos = 1
-        elif self.yPos > 5:
-            self.yPos = 5
+        elif self.yPos > fieldSizeY:
+            self.yPos = fieldSizeX
 
     # Set the player's position
     def setPosition(self, x, y):
-        assert x < 6 and x > 0, 'x is out of bounds'
-        assert y < 6 and y > 0, 'y is out of bounds'
+        assert x < (fieldSizeX + 1) and x > 0, 'x is out of bounds'
+        assert y < (fieldSizeY + 1) and y > 0, 'y is out of bounds'
         self.xPos = x
         self.yPos = y
 
@@ -170,7 +183,7 @@ class Render:
 
     # generate a 5x5 matrix of pixels, each pixel represents a ship or player. 2d array.
     def __generatePixelMatrix(self, layers):
-        matrix = [[0]*5 for i in range(5)]
+        matrix = [[0]*fieldSizeX for i in range(fieldSizeY)]
         field = self.field.field
         layer3 = field['layer3']
         layer6 = field['layer6']
@@ -292,8 +305,8 @@ while True:
     renderer = Render(field)
 
     # Variables
-    attempts = 0
-    clickDelay = 0
+    attempts = 0 # how many the fire() function was called
+    clickDelay = 0 # button/movement debounce
     callRenderDispatchInNextFrame = True # first frame render must always render
 
     # Game Loop
@@ -317,7 +330,7 @@ while True:
             if not clickDelay > 0:
                 player.move('up')
                 dispatchRender = True
-                clickDelay = targetClickDelay
+                clickDelay = targetClickDelay # 20
         elif gesture == 'down':
             if not clickDelay > 0:
                 player.move('down')
