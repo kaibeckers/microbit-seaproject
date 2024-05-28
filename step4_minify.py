@@ -1,150 +1,76 @@
-# Title:       Battleship
-# Author:      Kai Beckers
-# Date:        28-05-2024
-#
-# A simple battleship game for the micro:bit. To fire, press the A button on your cursor.. To see where the ships are, 
-# press the B button. To move, tilt the micro:bit in the direction you want to move. To restart the game, shake the micro:bit.
-# Your objective is to sink all the ships on the field. Sunken ships will appear faintly on the field.
-# The game will display a skull when you hit a ship, and an X when you miss. When you win, a smiley face will appear!
-# Good luck!
-
-#  _____ _____ _____ _____ 
-# |   | |     |_   _|   __|
-# | | | |  |  | | | |   __|
-# |_|___|_____| |_| |_____|
-# MemoryError when running on a real Microbit
-# Due to my Object-oriented approach and clarity, the code is quite large and memory-intensive for a microbit. Therefore, 
-# running this code on a real microbit will result in a MemoryError. 
-# Running this code on a microbit simulator, like https://python.microbit.org/v/3 will work fine.
-
-
-# env
-targetClickDelay = 20 # how many frames to wait before registering a new button press
+targetClickDelay = 20
 fieldSizeX = 5 
 fieldSizeY = 5
-
-# Imports
 import random
 import time
 import microbit
-
-# was gonna do snake_case as per pep8, but as per the coteach guidelines, I'm doing camelCase
-
-# Classes
-# Field class, contains all ships, users and their positions
 class Field:
     xFieldSize = 5
     yFieldSize = 5
-
-    # init
     def __init__(self):
         self.field = {}
-        self.field['layer0'] = [] # layer 0
+        self.field['layer0'] = []
         self.field['layer3'] = [] 
-        self.field['layer6'] = [] # { Ship }
+        self.field['layer6'] = []
         self.field['layer9'] = []
-    
-    # add Ship (bypasses checkShipConstraint)
     def addShip(self, ship):
         assert isinstance(ship, Ship), 'variable ship must be of type Ship'
-
-        # append to layer 6
         self.field['layer6'].append(ship)
-
-    # add random Ship x, y, rot. size is determined by type
     def addRandomShip(self, type):
         assert type == 'minesweeper' or type == 'submarine' or type == 'cruiser' or type == 'aircraft_carrier', 'value type must be "minesweeper", "submarine", "cruiser" or "aircraft_carrier"'
-
-        # define size pre-emptively 
         size = 1 if type == 'minesweeper' else 2 if type == 'submarine' else 3 if type == 'cruiser' else 4
-
-        # request loop (overlap will restart loop), safetyLimit = 10
         safetyLimit = 20
         while safetyLimit > 0:
             safetyLimit -= 1
-
-            # get random position and rotation
             rot  = 'vert' if random.randint(0, 1) == 0 else 'hori'
             xPos = getRandomXYValueConstrainted(self.xFieldSize, size, rot)['x']
             yPos = getRandomXYValueConstrainted(self.yFieldSize, size, rot)['y']
-
-            # check if ship can be placed
             ship = Ship(xPos, yPos, size, rot)
             if self.checkShipConstraint(ship) == True:
                 continue
-
-            # append to the Field
             self.addShip(ship)
-
-            # return success
             return { 'x': xPos, 'y': yPos, 'rot': rot, 'size': size }
-
         raise Exception('Safety limit reached, could not place ship')
-
-    # check if input ship overlaps with any other ship already in the field (returns True/False)
     def checkShipConstraint(self, ship): 
         assert isinstance(ship, Ship), 'variable ship must be of type Ship'
-
         tilesToCheck = convertShiptoTiles(ship)
-
-        # ensure the entire ship is within bounds
         for tile in tilesToCheck:
             if tile['x'] < 1 or tile['x'] > fieldSizeX or tile['y'] < 1 or tile['y'] > fieldSizeY:
                 return True
-
-        # convert Ships in layer 6 to tiles
         ships = self.field['layer6']
         otherShipTilesToCheck = []
         for ship in ships:
             otherShipTilesToCheck += convertShiptoTiles(ship)
-
-        # check for overlap
         for tile in tilesToCheck:
             if tile in otherShipTilesToCheck:
                 print('overlap')
                 return True
-            
         return False
-   
-    # add Player
     def addPlayer(self, player):
         assert isinstance(player, Player), 'variable player must be of type Player'
         if len(self.field['layer9']) > 0:
             raise AssertionError('Only one player can be added to the field')
-
         self.field['layer9'].append(player)
-
-    # remove Ship
     def removeShip(self, ship, layer=6):
         assert isinstance(ship, Ship), 'variable ship must be of type Ship'
         assert layer == 6, 'value layer must be 6'
         self.field['layer' + str(layer)].remove(ship)
-
-    # move object between layers
     def changeObjectLayer(self, object, fromLayer, toLayer):
         assert fromLayer == 0 or fromLayer == 3 or fromLayer == 6 or fromLayer == 9, 'value fromLayer must be 0, 3, 6 or 9'
         assert toLayer == 0 or toLayer == 3 or toLayer == 6 or toLayer == 9, 'value toLayer must be 0, 3, 6 or 9'
 
         self.field['layer' + str(toLayer)].append(object)
         self.field['layer' + str(fromLayer)].remove(object)
-
-# Ship class, contains the position, size and rotation of a ship. Child of the Field class
 class Ship:
-    # init
     def __init__(self, xPos, yPos, size, rot):
         assert rot == 'hori' or rot == 'vert', 'value rot must be "hori" or "vert"'
         assert xPos < (fieldSizeX + 1) and xPos > 0, 'xPos is out of bounds'
         assert yPos < (fieldSizeY + 1) and yPos > 0, 'yPos is out of bounds'
-
-        # set values
         self.xPos = xPos
         self.yPos = yPos
         self.size = size
-        self.rot = rot # rotation (hori/vert)
-
-# Player class, manages Player position, etc. Needs to be added to the Field class manually, functions as a child of the Field class
+        self.rot = rot
 class Player:
-    # init
     def __init__(self):
         self.xPos = 1
         self.yPos = 1
