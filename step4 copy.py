@@ -25,16 +25,16 @@ import random,time,microbit
 class Field:
 	xFieldSize=5;yFieldSize=5
 	def __init__(A):A.field={};A.field['layer0']=[];A.field[_R]=[];A.field[_D]=[];A.field[_G]=[]
-	def addShip(A,ship):assert isinstance(ship,Ship),_N;A.field[_D].append(ship)
+	def addShip(A,ship):A.field[_D].append(ship)
 	def aRSl(A,type):
-		assert type==_O or type==_H or type==_P or type==_S,'h';B=1 if type==_O else 2 if type==_H else 3 if type==_P else 4;D=20
+		B=1 if type==_O else 2 if type==_H else 3 if type==_P else 4;D=20
 		while D>0:
 			D-=1;C=_I if random.randint(0,1)==0 else'hori';E=gTc(A.xFieldSize,B,C)[_B];F=gTc(A.yFieldSize,B,C)[_C];G=Ship(E,F,B,C)
 			if A.checkShipConstraint(G)==_A:continue
 			A.addShip(G);return{_B:E,_C:F,'rot':C,'size':B}
 		raise Exception('h')
 	def checkShipConstraint(E,ship):
-		B=ship;assert isinstance(B,Ship),_N;C=cS(B)
+		B=ship;C=cS(B)
 		for A in C:
 			if A[_B]<1 or A[_B]>fieldSizeX or A[_C]<1 or A[_C]>fieldSizeY:return _A
 		F=E.field[_D];D=[]
@@ -43,17 +43,17 @@ class Field:
 			if A in D:print('overlap');return _A
 		return _E
 	def addPlayer(A,player):
-		B=player;assert isinstance(B,Player),'h'
+		B=player
 		if len(A.field[_G])>0:raise AssertionError('h')
 		A.field[_G].append(B)
-	def removeShip(B,ship,layer=6):A=layer;assert isinstance(ship,Ship),_N;assert A==6,'h';B.field[_Q+str(A)].remove(ship)
-	def changeObjectLayer(C,object,fromLayer,toLayer):B=toLayer;A=fromLayer;assert A==0 or A==3 or A==6 or A==9,'h';assert B==0 or B==3 or B==6 or B==9,'value toLayer must be 0, 3, 6 or 9';C.field[_Q+str(B)].append(object);C.field[_Q+str(A)].remove(object)
+	def removeShip(B,ship,layer=6):A=layer;B.field[_Q+str(A)].remove(ship)
+	def changeObjectLayer(C,object,fromLayer,toLayer):B=toLayer;A=fromLayer;C.field[_Q+str(B)].append(object);C.field[_Q+str(A)].remove(object)
 class Ship:
-	def __init__(A,xPos,yPos,size,rot):D=rot;C=yPos;B=xPos;assert D=='hori'or D==_I,'h';assert B<fieldSizeX+1 and B>0,'h';assert C<fieldSizeY+1 and C>0,'h';A.xPos=B;A.yPos=C;A.size=size;A.rot=D
+	def __init__(A,xPos,yPos,size,rot):D=rot;C=yPos;B=xPos;A.xPos=B;A.yPos=C;A.size=size;A.rot=D
 class Player:
 	def __init__(A):A.xPos=1;A.yPos=1
 	def move(A,direction):
-		B=direction;assert B==_J or B==_K or B==_L or B==_M,'h'
+		B=direction
 		if B==_J:A.yPos-=1
 		elif B==_K:A.yPos+=1
 		elif B==_L:A.xPos-=1
@@ -62,10 +62,10 @@ class Player:
 		elif A.xPos>fieldSizeX:A.xPos=fieldSizeX
 		if A.yPos<1:A.yPos=1
 		elif A.yPos>fieldSizeY:A.yPos=fieldSizeX
-	def setPosition(A,x,y):assert x<fieldSizeX+1 and x>0,'h';assert y<fieldSizeY+1 and y>0,'h';A.xPos=x;A.yPos=y
+	def setPosition(A,x,y):A.xPos=x;A.yPos=y
 	def getPosition(A):return{_B:A.xPos,_C:A.yPos}
 class Render:
-	def __init__(B,field):A=field;assert isinstance(A,Field),'h';B.field=A
+	def __init__(B,field):A=field;B.field=A
 	def __gpx(K,layers):
 		C=layers;B=[[0]*fieldSizeX for A in range(fieldSizeY)];D=K.field.field;G=D[_R];H=D[_D];I=D[_G]
 		if not 3 in C:G=[]
@@ -90,7 +90,7 @@ class Render:
 		if type==_T:microbit.display.show(microbit.Image.NO,delay=500,clear=_A,wait=_A)
 		elif type=='skull':microbit.display.show(microbit.Image.SKULL,delay=500,clear=_A,wait=_A)
 		elif type=='win':microbit.display.show(microbit.Image.HAPPY,delay=500,clear=_A,wait=_A)
-		elif type==_F:assert input!=None,'h';microbit.display.scroll(str(input),delay=100,wait=_A)
+		elif type==_F:microbit.display.scroll(str(input),delay=100,wait=_A)
 		else:raise AssertionError('h')
 def cS(ship):
 	A=ship;B=[]
